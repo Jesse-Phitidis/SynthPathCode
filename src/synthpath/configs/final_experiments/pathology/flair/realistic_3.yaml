@@ -1,0 +1,113 @@
+# DiceCELoss with dice_weight=0.5 and path_weight=1.0
+model:
+  class_path: synthpath.training.lightning_modules.BaseLightningModule
+  init_args:
+    network:
+      class_path: monai.networks.nets.DynUNet
+      init_args:
+        spatial_dims: 3
+        in_channels: 1
+        out_channels: 20
+        kernel_size:
+        - 3
+        - 3
+        - 3
+        - 3
+        - 3
+        - 3
+        strides:
+        - 1
+        - 2
+        - 2
+        - 2
+        - 2
+        - 2
+        upsample_kernel_size:
+        - 2
+        - 2
+        - 2
+        - 2
+        - 2
+        deep_supervision: false
+    criterion_anat:
+      class_path: synthpath.training.losses.DiceCELoss
+      init_args:
+        include_background: false
+        softmax: true
+        return_separate: true
+    criterion_path:
+      class_path: synthpath.training.losses.DiceCELoss
+      init_args:
+        include_background: true
+        sigmoid: true
+        return_separate: true
+    inference_class:
+      class_path: synthpath.inference.inference_classes.BaseInferer
+    test_pred_dir: null
+    test_metrics_path: null
+    target_label: 19
+    watch_log_freq: 100
+    dice_weight: 0.5
+    path_weight: 1.0
+    threshold_probs: 0.5
+data:
+  class_path: synthpath.data.data_modules.BaseDataModule
+  init_args:
+    data_dir: /home/jessephitidis/BRICIA/MVH_JPhitidis_PhD/canon_placement_y2/jan2024/data/jan2024new
+    modality: flair
+    batch_size: 1
+    num_workers: 8
+    transforms_train:
+      class_path: synthpath.training.augmentation.composed.SyntheticDataTransforms
+      init_args:
+        sampling_mean: default_intensities_mean_lr_minmax
+        sampling_std: default_intensities_std_lr_minmax
+        sampling_mean_shift: 0.02
+        sampling_std_shift: 0.01
+        sampling_ignore_background: true
+        confound_distance: 0.02
+        confound_prob: 0.0
+        res_max_spacing: 2.0
+    transforms_val:
+      class_path: synthpath.training.augmentation.composed.ValTransforms
+      init_args:
+        percentiles:
+        - 0
+        - 100
+    transforms_test:
+      class_path: synthpath.training.augmentation.composed.TestTransforms
+      init_args:
+        percentiles:
+        - 0
+        - 100
+    pre_load_data: true
+optimizer:
+  class_path: torch.optim.AdamW
+  init_args:
+    lr: 0.0001
+trainer:
+  gradient_clip_val: 0.7
+  logger:
+    class_path: pytorch_lightning.loggers.WandbLogger
+    init_args:
+      project: final_experiments_path
+      log_model: false
+      save_dir: /home/jessephitidis/BRICIA/MVH_JPhitidis_PhD/canon_placement_y2/jan2024/wandb_logs/final_experiments_path/flair_realistic_3
+      name: flair_realistic_3
+  accelerator: gpu
+  devices:
+  - 0
+  precision: 32
+  max_epochs: 100
+  check_val_every_n_epoch: 5
+  log_every_n_steps: null
+  callbacks:
+  - class_path: pytorch_lightning.callbacks.LearningRateMonitor
+    init_args:
+      logging_interval: epoch
+  - class_path: synthpath.training.callbacks.ModelCheckpointEdit
+    init_args:
+      filename: "{epoch}"
+  - class_path: synthpath.training.callbacks.TimeIteration
+seed_everything: 3
+
